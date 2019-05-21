@@ -1,5 +1,5 @@
-### Deep Neural Networks for YouTube Recommendations<sup>[1]</sup>
-Paul Covington, Jay Adams, Emre Sargin
+<center><font size=5><b>Deep Neural Networks for YouTube Recommendations<sup>[1]</sup></b></font></center>
+<center>Paul Covington, Jay Adams, Emre Sargin</center>
 ### 摘要
 YouTube是目前最大规模和最复杂的工业级推荐系统之一。本文从较高的层面上对该系统进行了描述，并着重讲解了深度学习给该系统的性能带来的提升。本文按照经典的信息检索二段法进行划分：首先，详细介绍了一个深度候选生成模型，然后，介绍了一个单独的排序模型。同时，本文分享了从设计、迭代、维护一个大规模的推荐系统得到的经验和见解。
 ### 1. 介绍
@@ -11,11 +11,41 @@ YouTube是世界上最大的视频内容创作、分享、发掘平台。Youtube
 
 本文的模型学习了大约10亿个参数，在数千亿的训练样本上进行了训练。
 ### 2. 系统概述
-![图1. 候选视频经过检索和排序呈现给用户](https://upload-images.jianshu.io/upload_images/17943149-1dff64db5f0b34ea.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/480)整个推荐系统的框架如图1所示，系统由两个神经网络组成，一个用于候选生成，一个用于排序。
+<center>
+<img src="https://github.com/zhaibowen/Reading-Papers/blob/master/Image/%E5%B1%8F%E5%B9%95%E5%BF%AB%E7%85%A7%202019-05-19%20%E4%B8%8A%E5%8D%8810.59.07.png?raw=true" width="500" hegiht="313"/>
+
+<font size=3 face="STKaiti">图1. 候选视频经过检索和排序呈现给用户</font>
+</center>
+整个推荐系统的框架如图1所示，系统由两个神经网络组成，一个用于候选生成，一个用于排序。
+
 候选生成网络使用用户的历史行为数据作为输入，从视频库中检索出一小部分视频子集。该子集要求在与用户的相关性上具有高准确率。候选生成网络仅通过协同过滤提供宽泛的个性化特征。用户之间的相似性通过粗粒度的特征来表示，例如视频ID，搜索词以及人口统计学特征。
 ***notice: 什么是准确率？***
 准确率(precision)$P=\frac{TP}{TP+FP}$，即在所有神经网络预测的正类中，真实的正类所占的比例。
-![图2. 混淆矩阵](https://upload-images.jianshu.io/upload_images/17943149-67487b6aa9f53d7e.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/1240)***notice: 为什么是通过协同过滤提供宽泛的个性化特征？***
+<center>
+<table style="text-align: center;">
+<tr>
+    <td rowspan="2" colspan="2">混淆矩阵</td>
+    <td colspan="2">预测值</td>
+</tr>
+<tr>
+    <td>正类</td>
+    <td>负类</td>
+</tr>
+<tr>
+    <td rowspan="2">真实值</td>
+    <td>正类</td>
+    <td>TP</td>
+    <td>FN</td>
+</tr>
+<tr>
+    <td>负类</td>
+    <td>FP</td>
+    <td>TN</td>
+</tr>
+</table>
+</center>
+
+***notice: 为什么是通过协同过滤提供宽泛的个性化特征？***
 从一个列表中选出具有高召回率的一小部分"最好的"的视频进行推荐，需要细粒度的表示来区分视频之间的相对重要性。排序网络通过使用一个描述视频和用户的丰富特征集，根据期望的目标函数给每个视频打分，来完成这项任务。按照分数排序之后，最高分数的视频集被呈现给用户。
 ***notice: 召回率(recall)$R=\frac{TP}{TP+FN}$，文中采用的是哪个性能的召回率？为什么采用召回率？***
 两段推荐法使得作者可以从非常大的视频库中进行推荐，同时确保展现在设备上的那一小部分视频是个性化的，并且对用户有吸引力。此外，这种设计可以混合其他来源的候选视频，例如早期的工作中所描述的那些<sup>[2]</sup>。
@@ -32,14 +62,26 @@ $$P(w_t=i|U,C)=\frac{e^{v_iu}}{\sum_{j\in V}e^{v_ju}}，$$其中，$u\in\mathbb{
 在服务时，需要计算出最可能的N类（视频）呈现给用户。 数十毫秒的严苛的服务延迟内对数百万个物品打分需要一个亚线性于类别数量的近似打分方案。 YouTube以前的系统依赖于哈希<sup>[6]</sup>，本文的分类器采用类似的方案。 由于在服务时不需要来自经过softmax输出层校准后的似然概率，因此评分问题简化为在点积空间中的最近邻搜索，可以使用通用库来实现<sup>[7]</sup>。 本文发现A / B实验的结果对最近邻搜索算法的选择不是特别敏感。
 ***notice: 什么是点积空间的最近邻搜索？***
 #### 3.2 模型架构
-![图3. 候选生成网络的模型架构](https://upload-images.jianshu.io/upload_images/17943149-987218030f6e13c1.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/480)模型架构如图2所示。首先用Embedding层将用户历史观看视频ID映射成高维向量，然后通过简单平均（相比于求和或求最大值表现更优），将不定长的观看序列变成定长向量。Embedding层通过反向梯度传播和模型的其他参数放在一起训练。平均后的向量和其它特征连成很宽的第一层，后面是使用RELU作为激活函数的全连接层。
+<center>
+<img src="https://github.com/zhaibowen/Reading-Papers/blob/master/Image/%E5%B1%8F%E5%B9%95%E5%BF%AB%E7%85%A7%202019-05-19%20%E4%B8%8B%E5%8D%887.56.12.png?raw=true" width="500" hegiht="313"/>
+
+<font size=3 face="STKaiti">图2. 候选生成网络的模型架构</font>
+</center>
+模型架构如图2所示。首先用Embedding层将用户历史观看视频ID映射成高维向量，然后通过简单平均（相比于求和或求最大值表现更优），将不定长的观看序列变成定长向量。Embedding层通过反向梯度传播和模型的其他参数放在一起训练。平均后的向量和其它特征连成很宽的第一层，后面是使用RELU作为激活函数的全连接层。
+
 ***notice: Embedding放在整个模型里一起训练，也就是在反向传播时，同时更新了softmax中的$u$和$v_i$。***
 #### 3.3 异构信号
 神经网络相对于矩阵分解方法的一个关键优势是可以将任意的连续特征和类别特征加入到模型中。搜索历史的处理方法和观看历史类似，每个query通过unigram和bigram符号化。人口学特征对推荐系统给新用户做出推荐非常重要。 用户的地理区域和使用设备同样经过嵌入层被级联。 简单的二元或连续特征（例如用户的性别，登录状态和年龄）作为实数直接输入到网络中，并标准化为[0,1]之间。
 ***“样本年龄” 特征***
 每秒都会有数小时的视频上传到YouTube。推荐最近上传的（“新鲜”）内容对于YouTube来说非常重要。 我们始终注意到用户更喜欢新鲜内容，但不以牺牲相关性为代价。 除了简单推荐用户想要观看的新视频的一阶效应之外，还有一个关键的次要现象：引导和传播内容<sup>[8]</sup>。
 机器学习系统通常表现出隐式的对历史的偏置，这是因为它们由历史样本训练，并去预测未来。视频流行度的分布是非常不稳定的，但是由推荐产生的语料库的多项式分布反映的是过去几周的训练窗口内的平均观看似然概率，因此，本文将样本年龄作为一个训练特征。在服务时，此特征置零（或略微为负），以反映模型在训练窗口的尾部进行预测。图3展示了这种方法对任意选择的视频的效果。
-![图4. 加入样本年龄前后某个视频的类别概率对比](https://upload-images.jianshu.io/upload_images/17943149-ba40b40e43947374.png?imageMogr2/auto-orient/strip%7CimageView2/2/w/480)***notice: 什么是样本年龄？***
+<center>
+<img src="https://github.com/zhaibowen/Reading-Papers/blob/master/Image/%E5%B1%8F%E5%B9%95%E5%BF%AB%E7%85%A7%202019-05-20%20%E4%B8%8B%E5%8D%885.30.34.png?raw=true" width="500" hegiht="313"/>
+
+<font size=3 face="STKaiti">图3. 加入样本年龄前后某个视频的类别概率对比</font>
+</center>
+
+***notice: 什么是样本年龄？***
 假设所有训练样本中最新的样本产生时间为t1，某条样本的产生时间为t2（用户观看了某条视频），则样本的年龄为t1-t2
 ***notice: 推荐产生的语料库为什么是多项式分布？***
 n个样本可以看成n次独立实验，每个样本经过模型和softmax层，输出m种分类的概率，m种分类的概率之和为1，满足多项式分布的定义。
@@ -48,6 +90,13 @@ n个样本可以看成n次独立实验，每个样本经过模型和softmax层�
 因为每个视频的上传时间都不一样，神经网络输出$u$之后，通过softmax计算所有类别（视频）的概率，因此无法针对每一个视频单独设置一个上传时间。
 ***notice: 为什么样本年龄是有效的特征？***
 假设某个视频已经产生了10天，那么[0,10]中的每一天观看它的人数应该符合图4绿色曲线的经验分布，每一天由该视频产生的训练样本的相对数量如图5所示，在训练中，样本的相对数量会转化为类别概率，例如在样本年龄等于5，并且其他输入特征相似的情况下，有10个该视频的样本（一个用户观看了一个视频为一个样本），90个其他视频的样本，那么训练出来的模型在预测相似特征时，该类别的输出概率大致为10%。因此图5也是预测类别概率随样本年龄变化的曲线，如果设置为负值，那么预测出的曲线应该是原有曲线的延伸（类似于直线的延伸），这解释了为什么图4中红色曲线的峰值相对于绿色曲线有一天的延迟。
+
+<center>
+<img src="https://github.com/zhaibowen/Reading-Papers/blob/master/Image/%E5%B1%8F%E5%B9%95%E5%BF%AB%E7%85%A7%202019-05-20%20%E4%B8%8B%E5%8D%885.30.34.png?raw=true" width="500" hegiht="313"/>
+
+<font size=3 face="STKaiti">图3. 加入样本年龄前后某个视频的类别概率对比</font>
+</center>
+
 ![图5. 样本相对比例随样本年龄变化示意图](https://upload-images.jianshu.io/upload_images/17943149-4d8854ea083a2cc8.png?imageMogr2/auto-orient/strip%7CimageView2/2/480)***notice: 如何处理新产生的视频？***
 在模型训练好之后，进行服务时，新产生的视频是没有单独的Embedding表示的，Embedding层会用默认值表示未见过的ID，这样的话新视频的类别概率肯定不高，因此视频刚产生时，应该是从其他渠道呈现给一部分用户（例如图1的other candidate sources，或主动搜索），然后模型在不断的迭代过程中（例如小时级别的迭代），包含该视频的样本越来越多，模型学到的该视频的Embedding也越来越精确。
 #### 3.4 标签和上下文的选择
